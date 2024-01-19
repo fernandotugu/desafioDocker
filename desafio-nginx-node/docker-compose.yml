@@ -1,0 +1,52 @@
+version: '3.8'
+services:  
+  app:
+    restart: always
+    build:
+      context: ./node
+    container_name: app
+    image: ozodrac/node
+    networks:
+      - desafio-node
+    volumes:
+      - ./node:/usr/src/app
+      - /usr/src/app/node_modules
+    tty: true
+    depends_on:
+      - dbserver
+    links:
+      - dbserver
+    entrypoint: dockerize -wait tcp://dbserver:3306 -timeout 20s docker-entrypoint.sh
+    command: "node ./index.js"
+  
+  nodenginx:
+    restart: always
+    build:
+      context: ./nginx
+    container_name: nodenginx
+    image: ozodrac/nginx
+    networks:
+      - desafio-node
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
+  dbserver:
+    image: mysql:5.7
+    container_name: dbserver
+    restart: always
+    tty: true
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./banco.sql:/docker-entrypoint-initdb.d/setup.sql
+    networks:
+      - desafio-node
+    command: --innodb-use-native-aio=0
+    environment:
+      MYSQL_DATABASE: 'nodedb'
+      MYSQL_ROOT_PASSWORD: "root"
+      # MYSQL_ALLOW_EMPTY_PASSWORD: 1
+      # MYSQL_ROOT_HOST: "%"
+networks:
+  desafio-node:
+    driver: bridge  
